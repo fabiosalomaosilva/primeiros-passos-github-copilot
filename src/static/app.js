@@ -19,12 +19,28 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
+        
+        // Create participants list
+        const participantsList = details.participants.length > 0 
+          ? `<ul class="participants-list">${details.participants.map(participant => 
+              `<li class="participant-item">
+                <span class="participant-email">${participant}</span>
+                <button class="delete-btn" onclick="unsubscribeParticipant('${name}', '${participant}')" title="Desinscrever participante">
+                  ✕
+                </button>
+              </li>`
+            ).join('')}</ul>`
+          : '<p class="no-participants">Nenhum participante inscrito ainda</p>';
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Agenda:</strong> ${details.schedule}</p>
           <p><strong>Disponibilidade:</strong> ${spotsLeft} vagas disponíveis</p>
+          <div class="participants-section">
+            <h5>Participantes Inscritos:</h5>
+            ${participantsList}
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -80,6 +96,50 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Erro na inscrição:", error);
     }
   });
+
+  // Function to unsubscribe a participant from an activity
+  async function unsubscribeParticipant(activityName, email) {
+    if (!confirm(`Tem certeza que deseja desinscrever ${email} de ${activityName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/unsubscribe?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        
+        // Refresh activities to show updated list
+        fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || "Ocorreu um erro";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+
+      // Hide message after 5 seconds
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Falha na desinscrição. Por favor, tente novamente.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Erro na desinscrição:", error);
+    }
+  }
+
+  // Make unsubscribeParticipant globally available
+  window.unsubscribeParticipant = unsubscribeParticipant;
 
   // Initialize app
   fetchActivities();
